@@ -18,5 +18,7 @@ const ENEMIES = [
   { id: 'vampire',  name: "Vampire de l'Histoire",   emoji: '🧛', hp: 85,  atk: 13, subject: 'histoire', difficulty: 'Difficile',
     model: { pack: 'graveyard', file: 'character-vampire.glb', color: 0x7b1fa2 } },
   { id: 'keeper',   name: 'Gardien du Savoir',       emoji: '🧙', hp: 110, atk: 16, subject: 'culture',  difficulty: 'Boss final', boss: true,
-    model: { pack: 'graveyard', file: 'character-keeper.glb', color: 0xffc107, scaleMul: 1.3 } }
+    model: { pack: 'graveyard', file: 'character-keeper.glb', color: 0xffc107, scaleMul: 1.3 } },
+  { id: 'sage',     name: 'Le Sage des Prophètes',   emoji: '📖', hp: 130, atk: 18, subject: 'prophetes', difficulty: 'Défi bonus', boss: true,
+    model: { pack: 'graveyard', file: 'character-keeper.glb', color: 0x2e7d32, scaleMul: 1.15 } }
 ];

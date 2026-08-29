@@ -132,6 +132,45 @@ h1, h2 {
   margin-bottom: 24px;
 }
 
+.subject-select {
+  margin-bottom: 24px;
+  text-align: left;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.subject-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.subject-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 2px solid var(--panel-border);
+  background: var(--bg-darker);
+  color: var(--text-dim);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+}
+
+.subject-btn:hover { border-color: var(--gold); color: var(--text); }
+
+.subject-btn.active {
+  border-color: var(--gold);
+  background: rgba(255, 207, 92, 0.15);
+  color: var(--gold);
+}
+
+.subject-emoji { font-size: 1.3rem; }
+
 .btn-row {
   display: flex;
   gap: 10px;
@@ -203,11 +242,139 @@ h1, h2 {
 
 /* ---------- Battle ---------- */
 
+.battle-screen { position: relative; }
+
+.pause-btn {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 5;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--panel-border);
+  background: var(--bg-darker);
+  color: var(--text);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.pause-btn:hover { border-color: var(--gold); }
+
+.pause-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 6, 20, 0.72);
+  backdrop-filter: blur(2px);
+  padding: 16px;
+  animation: pop-in 0.15s ease;
+}
+
+.pause-panel {
+  width: 100%;
+  max-width: 420px;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 26px 22px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  text-align: center;
+}
+
+.pause-panel h2 {
+  font-size: 1.1rem;
+  color: var(--gold);
+  margin: 0 0 20px;
+}
+
+.pause-panel > .btn-secondary {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.pause-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pause-menu-list .btn-primary,
+.pause-menu-list .btn-secondary {
+  width: 100%;
+  margin-top: 0;
+}
+
+.pause-lang-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0.7;
+  cursor: default;
+}
+
+.soon-badge {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.pause-level-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+
+.level-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 2px solid var(--panel-border);
+  background: var(--bg-darker);
+  color: var(--text-dim);
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+}
+
+.level-btn:hover { border-color: var(--gold); color: var(--text); }
+
+.level-btn.active {
+  border-color: var(--gold);
+  background: rgba(255, 207, 92, 0.15);
+  color: var(--gold);
+}
+
+.level-btn .subject-name { flex: 1; }
+
+.pause-warning {
+  color: var(--text-dim);
+  margin-bottom: 18px;
+}
+
 .battle-screen.battle-screen-3d {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
   max-width: 720px;
+  min-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .battle-screen-3d .sprite { display: none; }
@@ -237,6 +404,15 @@ h1, h2 {
   backdrop-filter: blur(3px);
 }
 
+/* En mode 3D, le perso du joueur reste visible au centre : sa barre de vie
+   devient un petit widget compact aligné à gauche plutôt qu'une barre pleine
+   largeur posée devant lui. */
+.battle-screen-3d .hero-hud {
+  align-self: flex-start;
+  width: auto;
+  max-width: 220px;
+}
+
 .progress-tag {
   text-align: center;
   color: var(--text-dim);
@@ -246,16 +422,46 @@ h1, h2 {
   letter-spacing: 0.05em;
 }
 
-.battlefield {
+.hud-top {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  align-items: center;
+}
+
+.hud-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .combatant {
   text-align: center;
   position: relative;
 }
+
+.hero-hud {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  background: rgba(16, 10, 32, 0.55);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 12px 16px;
+}
+
+.hero-hud .sprite-wrap { flex-shrink: 0; }
+.hero-hud .sprite { font-size: 2.4rem; margin-bottom: 0; }
+
+.hero-bar-wrap { flex: 1; min-width: 0; }
+
+.hero-bar-wrap .hp-bar,
+.enemy-bar-wrap .hp-bar {
+  max-width: none;
+  margin: 0;
+}
+
+.enemy-bar-wrap { max-width: 320px; margin: 0 auto; }
 
 .speech-bubble {
   position: relative;

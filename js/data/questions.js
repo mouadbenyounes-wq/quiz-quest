@@ -7,7 +7,8 @@ const SUBJECT_LABELS = {
   francais: 'Français',
   sciences: 'Sciences',
   histoire: 'Histoire',
-  culture: 'Culture générale'
+  culture: 'Culture générale',
+  prophetes: 'Histoire des prophètes'
 };
 
 const QUESTION_BANKS = {
@@ -70,5 +71,17 @@ const QUESTION_BANKS = {
     { question: "Combien de couleurs compte traditionnellement l'arc-en-ciel ?", choices: ["5", "6", "7", "8"], answer: 2 },
     { question: "Quel est le plus grand océan du monde ?", choices: ["Atlantique", "Indien", "Arctique", "Pacifique"], answer: 3 },
     { question: "Quelle monnaie est utilisée en France ?", choices: ["Le franc", "L'euro", "Le dollar", "La livre"], answer: 1 }
+  ],
+  prophetes: [
+    { question: "Combien de prophètes sont cités nommément dans le Coran ?", choices: ["25", "15", "30", "40"], answer: 0 },
+    { question: "Quel prophète a construit une grande arche pour échapper au déluge ?", choices: ["Ibrahim", "Nouh", "Moussa", "Youssouf"], answer: 1 },
+    { question: "Quel prophète a été jeté dans un puits par ses frères ?", choices: ["Youssouf", "Ismaël", "Ayyoub", "Younous"], answer: 0 },
+    { question: "Quel prophète a reçu la Torah (Tawrat) ?", choices: ["Moussa", "Aïssa", "Dawoud", "Mohammed ﷺ"], answer: 0 },
+    { question: "Quel prophète a reçu l'Évangile (Injil) ?", choices: ["Moussa", "Aïssa", "Dawoud", "Souleiman"], answer: 1 },
+    { question: "Quel prophète a reçu le Zabour (les Psaumes) ?", choices: ["Souleiman", "Dawoud", "Moussa", "Ibrahim"], answer: 1 },
+    { question: "Quel est le dernier prophète en Islam, le \"sceau des prophètes\" ?", choices: ["Moussa", "Aïssa", "Mohammed ﷺ", "Ibrahim"], answer: 2 },
+    { question: "Quel prophète est resté avalé par une grande baleine avant d'être sauvé ?", choices: ["Younous", "Ayyoub", "Ismaël", "Ishaq"], answer: 0 },
+    { question: "Quel est le premier prophète et premier être humain selon l'Islam ?", choices: ["Nouh", "Adam", "Ibrahim", "Idriss"], answer: 1 },
+    { question: "Avec quel fils le prophète Ibrahim a-t-il construit la Kaaba ?", choices: ["Ishaq", "Ismaël", "Yaqoub", "Youssouf"], answer: 1 }
   ]
 };

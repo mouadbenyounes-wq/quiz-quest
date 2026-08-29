@@ -3,6 +3,9 @@
 const state = {
   screen: 'menu',       // 'menu' | 'battle' | 'levelup' | 'gameover' | 'victory'
   pendingTimeMode: 'normal',
+  pendingMode: 'campaign', // 'campaign' | 'practice'
+  pendingEnemyId: ENEMIES[0].id,
+  practiceMode: false,
   heroName: '',
   timeMode: 'normal',
   hero: null,
@@ -15,12 +18,14 @@ const state = {
   lastAction: null,     // { by: 'hero' | 'enemy', dmg }
   timeLeft: null,
   timerHandle: null,
-  stats: { correct: 0, wrong: 0 }
+  stats: { correct: 0, wrong: 0 },
+  paused: false,
+  pauseView: 'main'   // 'main' | 'settings' | 'levels' | 'quit-confirm'
 };
 
 // ---------- Cycle de jeu ----------
 
-function newGame(heroName, timeMode) {
+function newGame(heroName, timeMode, mode, enemyId) {
   state.heroName = (heroName || '').trim() || 'Héros';
   state.timeMode = timeMode || 'normal';
   state.hero = {
@@ -29,8 +34,14 @@ function newGame(heroName, timeMode) {
     atk: CONFIG.BASE_HERO_ATK,
     streak: 0
   };
-  state.enemyIndex = 0;
   state.stats = { correct: 0, wrong: 0 };
+  state.practiceMode = mode === 'practice';
+  if (state.practiceMode) {
+    const idx = ENEMIES.findIndex((e) => e.id === enemyId);
+    state.enemyIndex = idx >= 0 ? idx : 0;
+  } else {
+    state.enemyIndex = 0;
+  }
   startBattle();
 }
 
@@ -62,27 +73,40 @@ function nextQuestion() {
 }
 
 function startTimer() {
-  clearInterval(state.timerHandle);
   const durations = { none: null, normal: CONFIG.QUESTION_TIME, fast: CONFIG.FAST_QUESTION_TIME };
-  const dur = durations[state.timeMode];
-
-  if (!dur) {
-    state.timeLeft = null;
-    render();
-    return;
-  }
-
-  state.timeLeft = dur;
+  state.timeLeft = durations[state.timeMode] || null;
   render();
+  runTimerInterval();
+}
+
+// Reprend le décompte en cours après une pause, sans réinitialiser timeLeft.
+function resumeTimer() {
+  render();
+  runTimerInterval();
+}
+
+function runTimerInterval() {
+  clearInterval(state.timerHandle);
+  if (state.timeLeft == null || state.paused) return;
   state.timerHandle = setInterval(() => {
     state.timeLeft -= 1;
     if (state.timeLeft <= 0) {
       clearInterval(state.timerHandle);
       answerQuestion(-1); // temps écoulé = mauvaise réponse
     } else {
-      render();
+      // Ne met à jour que la barre de temps : un render() complet recréerait
+      // la bulle de dialogue à chaque seconde et relancerait son animation
+      // d'apparition (effet de clignotement indésirable).
+      updateTimerBarOnly();
     }
   }, 1000);
+}
+
+function updateTimerBarOnly() {
+  const fill = document.querySelector('.timer-fill');
+  if (!fill) return;
+  const maxTime = state.timeMode === 'fast' ? CONFIG.FAST_QUESTION_TIME : CONFIG.QUESTION_TIME;
+  fill.style.width = (state.timeLeft / maxTime) * 100 + '%';
 }
 
 function answerQuestion(selectedIndex) {
@@ -132,8 +156,8 @@ function answerQuestion(selectedIndex) {
 }
 
 function onEnemyDefeated() {
-  saveBestProgress(state.enemyIndex + 1);
-  if (state.enemyIndex + 1 >= ENEMIES.length) {
+  if (!state.practiceMode) saveBestProgress(state.enemyIndex + 1);
+  if (state.practiceMode || state.enemyIndex + 1 >= ENEMIES.length) {
     state.screen = 'victory';
     SoundEngine.victory();
     render();
@@ -153,7 +177,7 @@ function applyLevelUp() {
 }
 
 function onHeroDefeated() {
-  saveBestProgress(state.enemyIndex);
+  if (!state.practiceMode) saveBestProgress(state.enemyIndex);
   state.screen = 'gameover';
   SoundEngine.defeat();
   render();
@@ -165,7 +189,7 @@ function saveBestProgress(n) {
 }
 
 function retryRun() {
-  state.enemyIndex = 0;
+  if (!state.practiceMode) state.enemyIndex = 0;
   state.hero = {
     maxHp: CONFIG.BASE_HERO_HP,
     hp: CONFIG.BASE_HERO_HP,
@@ -182,6 +206,36 @@ function backToMenu() {
   render();
 }
 
+// ---------- Menu pause (en combat) ----------
+
+function togglePause() {
+  if (state.screen !== 'battle') return;
+  state.paused = !state.paused;
+  if (state.paused) {
+    state.pauseView = 'main';
+    clearInterval(state.timerHandle);
+    render();
+  } else {
+    resumeTimer();
+  }
+}
+
+function selectLevel(idx) {
+  if (idx === state.enemyIndex) {
+    state.paused = false;
+    resumeTimer();
+    return;
+  }
+  state.enemyIndex = idx;
+  state.paused = false;
+  startBattle();
+}
+
+function quitToMenu() {
+  state.paused = false;
+  backToMenu();
+}
+
 // ---------- Rendu ----------
 
 function render() {
@@ -193,7 +247,7 @@ function render() {
   const app = document.getElementById('app');
   switch (state.screen) {
     case 'menu': app.innerHTML = renderMenu(); break;
-    case 'battle': app.innerHTML = renderBattle(); break;
+    case 'battle': app.innerHTML = renderBattle() + renderPauseOverlay(); break;
     case 'levelup': app.innerHTML = renderLevelUp(); break;
     case 'gameover': app.innerHTML = renderGameOver(); break;
     case 'victory': app.innerHTML = renderVictory(); break;
@@ -202,7 +256,23 @@ function render() {
 
 function renderMenu() {
   const best = Number(localStorage.getItem('quizquest_best') || 0);
-  const mode = state.pendingTimeMode || 'normal';
+  const timeMode = state.pendingTimeMode || 'normal';
+  const gameMode = state.pendingMode || 'campaign';
+  const isPractice = gameMode === 'practice';
+
+  const subjectPicker = isPractice ? `
+    <div class="subject-select">
+      <p class="field-label">Matière</p>
+      <div class="subject-grid">
+        ${ENEMIES.map(e => `
+          <button data-action="select-subject" data-enemy-id="${e.id}" class="subject-btn ${state.pendingEnemyId === e.id ? 'active' : ''}">
+            <span class="subject-emoji">${e.emoji}</span>
+            <span class="subject-name">${SUBJECT_LABELS[e.subject]}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>` : '';
+
   return `
   <div class="screen menu-screen">
     <h1 class="title">⚔️ Quiz Quest</h1>
@@ -214,15 +284,25 @@ function renderMenu() {
     </label>
 
     <div class="time-mode-select">
-      <p class="field-label">Mode de temps</p>
+      <p class="field-label">Mode de jeu</p>
       <div class="btn-row">
-        <button data-action="select-time-mode" data-mode="none" class="mode-btn ${mode === 'none' ? 'active' : ''}">Sans chrono</button>
-        <button data-action="select-time-mode" data-mode="normal" class="mode-btn ${mode === 'normal' ? 'active' : ''}">Normal (${CONFIG.QUESTION_TIME}s)</button>
-        <button data-action="select-time-mode" data-mode="fast" class="mode-btn ${mode === 'fast' ? 'active' : ''}">Rapide (${CONFIG.FAST_QUESTION_TIME}s)</button>
+        <button data-action="select-mode" data-mode="campaign" class="mode-btn ${gameMode === 'campaign' ? 'active' : ''}">Aventure complète</button>
+        <button data-action="select-mode" data-mode="practice" class="mode-btn ${isPractice ? 'active' : ''}">Choisir une matière</button>
       </div>
     </div>
 
-    <button class="btn-primary" data-action="start-game">Commencer l'aventure</button>
+    ${subjectPicker}
+
+    <div class="time-mode-select">
+      <p class="field-label">Mode de temps</p>
+      <div class="btn-row">
+        <button data-action="select-time-mode" data-mode="none" class="mode-btn ${timeMode === 'none' ? 'active' : ''}">Sans chrono</button>
+        <button data-action="select-time-mode" data-mode="normal" class="mode-btn ${timeMode === 'normal' ? 'active' : ''}">Normal (${CONFIG.QUESTION_TIME}s)</button>
+        <button data-action="select-time-mode" data-mode="fast" class="mode-btn ${timeMode === 'fast' ? 'active' : ''}">Rapide (${CONFIG.FAST_QUESTION_TIME}s)</button>
+      </div>
+    </div>
+
+    <button class="btn-primary" data-action="start-game">${isPractice ? 'Commencer le défi' : "Commencer l'aventure"}</button>
 
     <p class="best-record">🏆 Meilleur record : ${best} / ${ENEMIES.length} ennemis vaincus</p>
 
@@ -261,10 +341,11 @@ function renderBattle() {
 
   return `
   <div class="screen battle-screen ${use3D ? 'battle-screen-3d' : ''}">
-    <div class="progress-tag">Ennemi ${state.enemyIndex + 1} / ${ENEMIES.length} · Matière : ${SUBJECT_LABELS[enemy.subject]}</div>
+    <button class="pause-btn" data-action="toggle-pause" aria-label="Menu pause">☰</button>
+    <div class="hud-top">
+      <div class="progress-tag">Ennemi ${state.enemyIndex + 1} / ${ENEMIES.length} · Matière : ${SUBJECT_LABELS[enemy.subject]}</div>
 
-    <div class="battlefield">
-      <div class="combatant enemy-combatant
+      <div class="combatant enemy-combatant enemy-hud
         ${state.lastAction && state.lastAction.by === 'hero' ? 'shake' : ''}
         ${state.lastAction && state.lastAction.by === 'enemy' ? 'attack-lunge-down' : ''}">
         <div class="speech-bubble">${escapeHtml(currentQuestion.question)}</div>
@@ -272,27 +353,107 @@ function renderBattle() {
           <div class="sprite enemy-sprite ${enemy.hp <= 0 ? 'defeated' : ''}">${enemy.emoji}</div>
           ${dmgFloatEnemy}
         </div>
-        <div class="name-tag">${escapeHtml(enemy.name)} <span class="difficulty-tag">${enemy.difficulty}</span></div>
-        <div class="hp-bar"><div class="hp-fill enemy-hp" style="width:${enemyPct}%"></div></div>
-        <div class="hp-text">${enemy.hp} / ${enemy.maxHp} PV</div>
+        <div class="enemy-bar-wrap">
+          <div class="name-tag">${escapeHtml(enemy.name)} <span class="difficulty-tag">${enemy.difficulty}</span></div>
+          <div class="hp-bar"><div class="hp-fill enemy-hp" style="width:${enemyPct}%"></div></div>
+          <div class="hp-text">${enemy.hp} / ${enemy.maxHp} PV</div>
+        </div>
       </div>
+    </div>
 
-      <div class="combatant hero-combatant
+    <div class="hud-bottom">
+      <div class="combatant hero-combatant hero-hud
         ${state.lastAction && state.lastAction.by === 'enemy' ? 'shake' : ''}
         ${state.lastAction && state.lastAction.by === 'hero' ? 'attack-lunge-up' : ''}">
         <div class="sprite-wrap">
           <div class="sprite hero-sprite ${hero.hp <= 0 ? 'defeated' : ''}">🧑‍🎓</div>
           ${dmgFloatHero}
         </div>
-        <div class="name-tag">${escapeHtml(state.heroName)} ${hero.streak > 1 ? `<span class="streak-tag">🔥 x${hero.streak}</span>` : ''}</div>
-        <div class="hp-bar"><div class="hp-fill hero-hp" style="width:${heroPct}%"></div></div>
-        <div class="hp-text">${hero.hp} / ${hero.maxHp} PV</div>
+        <div class="hero-bar-wrap">
+          <div class="name-tag">${escapeHtml(state.heroName)} ${hero.streak > 1 ? `<span class="streak-tag">🔥 x${hero.streak}</span>` : ''}</div>
+          <div class="hp-bar"><div class="hp-fill hero-hp" style="width:${heroPct}%"></div></div>
+          <div class="hp-text">${hero.hp} / ${hero.maxHp} PV</div>
+        </div>
+      </div>
+
+      ${timerHtml}
+
+      <div class="choices-grid">${choicesHtml}</div>
+    </div>
+  </div>`;
+}
+
+function renderPauseOverlay() {
+  if (!state.paused) return '';
+  let panel;
+  if (state.pauseView === 'settings') panel = renderPauseSettings();
+  else if (state.pauseView === 'levels') panel = renderPauseLevels();
+  else if (state.pauseView === 'quit-confirm') panel = renderPauseQuitConfirm();
+  else panel = renderPauseMain();
+  return `<div class="pause-overlay">${panel}</div>`;
+}
+
+function renderPauseMain() {
+  return `
+  <div class="pause-panel">
+    <h2>⏸ Pause</h2>
+    <div class="pause-menu-list">
+      <button class="btn-primary" data-action="toggle-pause">▶️ Reprendre</button>
+      <button class="btn-secondary" data-action="pause-nav" data-view="settings">⚙️ Paramètres</button>
+      <button class="btn-secondary" data-action="pause-nav" data-view="levels">🗺️ Changer de niveau</button>
+      <button class="btn-secondary pause-lang-btn" data-action="noop">🌐 Langue <span class="soon-badge">Bientôt</span></button>
+      <button class="btn-secondary" data-action="pause-nav" data-view="quit-confirm">🚪 Quitter la partie</button>
+    </div>
+  </div>`;
+}
+
+function renderPauseSettings() {
+  const timeMode = state.timeMode || 'normal';
+  return `
+  <div class="pause-panel">
+    <h2>⚙️ Paramètres</h2>
+    <div class="time-mode-select">
+      <p class="field-label">Mode de temps</p>
+      <div class="btn-row">
+        <button data-action="pause-select-time-mode" data-mode="none" class="mode-btn ${timeMode === 'none' ? 'active' : ''}">Sans chrono</button>
+        <button data-action="pause-select-time-mode" data-mode="normal" class="mode-btn ${timeMode === 'normal' ? 'active' : ''}">Normal (${CONFIG.QUESTION_TIME}s)</button>
+        <button data-action="pause-select-time-mode" data-mode="fast" class="mode-btn ${timeMode === 'fast' ? 'active' : ''}">Rapide (${CONFIG.FAST_QUESTION_TIME}s)</button>
       </div>
     </div>
+    <div class="time-mode-select">
+      <p class="field-label">Son</p>
+      <button class="btn-secondary" data-action="pause-toggle-sound">${SoundEngine.isMuted() ? '🔇 Son coupé' : '🔊 Son activé'}</button>
+    </div>
+    <button class="btn-secondary" data-action="pause-nav" data-view="main">← Retour</button>
+  </div>`;
+}
 
-    ${timerHtml}
+function renderPauseLevels() {
+  return `
+  <div class="pause-panel">
+    <h2>🗺️ Changer de niveau</h2>
+    <div class="pause-level-list">
+      ${ENEMIES.map((e, i) => `
+        <button class="level-btn ${i === state.enemyIndex ? 'active' : ''}" data-action="pause-select-level" data-enemy-index="${i}">
+          <span class="subject-emoji">${e.emoji}</span>
+          <span class="subject-name">${escapeHtml(e.name)} — ${SUBJECT_LABELS[e.subject]}</span>
+          <span class="difficulty-tag">${e.difficulty}</span>
+        </button>
+      `).join('')}
+    </div>
+    <button class="btn-secondary" data-action="pause-nav" data-view="main">← Retour</button>
+  </div>`;
+}
 
-    <div class="choices-grid">${choicesHtml}</div>
+function renderPauseQuitConfirm() {
+  return `
+  <div class="pause-panel">
+    <h2>🚪 Quitter la partie ?</h2>
+    <p class="pause-warning">Ta progression dans ce combat en cours sera perdue.</p>
+    <div class="btn-row">
+      <button class="btn-primary" data-action="pause-quit">Oui, quitter</button>
+      <button class="btn-secondary" data-action="pause-nav" data-view="main">Annuler</button>
+    </div>
   </div>`;
 }
 
@@ -334,10 +495,13 @@ function renderGameOver() {
 function renderVictory() {
   const total = state.stats.correct + state.stats.wrong;
   const acc = total ? Math.round((state.stats.correct / total) * 100) : 0;
+  const message = state.practiceMode
+    ? `${escapeHtml(state.heroName)}, tu as relevé le défi grâce à ton savoir !`
+    : `${escapeHtml(state.heroName)}, tu as vaincu tous les ennemis grâce à ton savoir !`;
   return `
   <div class="screen end-screen victory-screen">
     <h2>🏆 Victoire !</h2>
-    <p>${escapeHtml(state.heroName)}, tu as vaincu tous les ennemis grâce à ton savoir !</p>
+    <p>${message}</p>
     <div class="stats-box">
       <p>Bonnes réponses : ${state.stats.correct}</p>
       <p>Mauvaises réponses : ${state.stats.wrong}</p>
@@ -362,11 +526,19 @@ function handleAction(action, data) {
   switch (action) {
     case 'start-game': {
       const nameInput = document.getElementById('hero-name-input');
-      newGame(nameInput ? nameInput.value : '', state.pendingTimeMode || 'normal');
+      newGame(nameInput ? nameInput.value : '', state.pendingTimeMode || 'normal', state.pendingMode || 'campaign', state.pendingEnemyId);
       break;
     }
     case 'select-time-mode':
       state.pendingTimeMode = data.mode;
+      render();
+      break;
+    case 'select-mode':
+      state.pendingMode = data.mode;
+      render();
+      break;
+    case 'select-subject':
+      state.pendingEnemyId = data.enemyId;
       render();
       break;
     case 'answer':
@@ -380,6 +552,31 @@ function handleAction(action, data) {
       break;
     case 'to-menu':
       backToMenu();
+      break;
+    case 'toggle-pause':
+      togglePause();
+      break;
+    case 'pause-nav':
+      state.pauseView = data.view;
+      render();
+      break;
+    case 'pause-select-time-mode':
+      state.timeMode = data.mode;
+      state.timeLeft = data.mode === 'none' ? null : (data.mode === 'fast' ? CONFIG.FAST_QUESTION_TIME : CONFIG.QUESTION_TIME);
+      render();
+      break;
+    case 'pause-toggle-sound':
+      SoundEngine.toggleMute();
+      updateMuteBtn();
+      render();
+      break;
+    case 'pause-select-level':
+      selectLevel(Number(data.enemyIndex));
+      break;
+    case 'pause-quit':
+      quitToMenu();
+      break;
+    case 'noop':
       break;
   }
 }
@@ -402,7 +599,11 @@ document.getElementById('app').addEventListener('click', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (state.screen !== 'battle' || state.locked || !state.currentQuestion) return;
+  if (e.key === 'Escape' && state.screen === 'battle') {
+    togglePause();
+    return;
+  }
+  if (state.screen !== 'battle' || state.locked || state.paused || !state.currentQuestion) return;
   const idx = ['1', '2', '3', '4'].indexOf(e.key);
   if (idx !== -1 && state.currentQuestion.choices[idx] !== undefined) {
     answerQuestion(idx);
