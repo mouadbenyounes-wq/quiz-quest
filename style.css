@@ -129,6 +129,7 @@ html, body {
 
 .screen {
   width: 100%;
+  min-width: 0;
   max-width: 640px;
   background: var(--panel);
   border: 2px solid var(--panel-border);
@@ -146,10 +147,19 @@ h1, h2 {
 
 .menu-screen {
   text-align: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  max-width: 460px;
+}
+
+.menu-header {
+  margin-bottom: 20px;
 }
 
 .title {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   color: var(--gold);
   margin: 0 0 8px;
   text-shadow: 2px 2px 0 rgba(0,0,0,0.4);
@@ -157,7 +167,8 @@ h1, h2 {
 
 .subtitle {
   color: var(--text-dim);
-  margin: 0 0 28px;
+  margin: 0;
+  font-size: 0.85rem;
 }
 
 .field {
@@ -205,7 +216,7 @@ h1, h2 {
 
 .subject-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 
@@ -213,6 +224,7 @@ h1, h2 {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   padding: 10px 14px;
   border-radius: 10px;
   border: 2px solid var(--panel-border);
@@ -222,6 +234,11 @@ h1, h2 {
   text-align: left;
   font-size: 0.85rem;
   transition: all 0.15s ease;
+}
+
+.subject-btn .subject-name {
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .subject-btn:hover { border-color: var(--gold); color: var(--text); }
@@ -287,21 +304,227 @@ h1, h2 {
 
 .btn-secondary:hover { border-color: var(--gold); }
 
-.best-record {
-  margin-top: 22px;
-  color: var(--text-dim);
-  font-size: 0.9rem;
-}
-
 .enemy-preview {
-  margin-top: 12px;
+  margin-top: 18px;
   display: flex;
   gap: 8px;
   justify-content: center;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
 }
 
 .enemy-chip { filter: grayscale(0.2); }
+
+/* ---------- Menu (habillage pixel-art Kenney) ---------- */
+
+:root {
+  --menu-ink: #3b2a1a;
+  --menu-ink-dim: #6b5236;
+}
+
+.menu-panel {
+  min-width: 0;
+  border-image-source: url('assets/kenney-ui-rpg/panel_brown.png');
+  border-image-slice: 30 fill;
+  border-image-width: 20px;
+  border-image-repeat: stretch;
+  padding: 32px 26px 28px;
+}
+
+.menu-panel .field-label {
+  color: var(--menu-ink-dim);
+}
+
+.menu-panel .field {
+  color: var(--menu-ink);
+}
+
+.menu-panel .field input {
+  border: none;
+  border-image-source: url('assets/kenney-ui-rpg/panelInset_beige.png');
+  border-image-slice: 26 fill;
+  border-image-width: 14px;
+  border-image-repeat: stretch;
+  background: transparent;
+  border-radius: 0;
+  color: var(--menu-ink);
+}
+
+.menu-panel .field input::placeholder { color: var(--menu-ink-dim); }
+
+.menu-panel .field input:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.menu-toggle-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.menu-toggle-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: #f1e2c8;
+  padding: 14px 16px;
+  border: none;
+  cursor: pointer;
+  flex: 0 1 auto;
+  min-width: 130px;
+  border-image-source: url('assets/kenney-ui-rpg/buttonLong_brown.png');
+  border-image-slice: 16 fill;
+  border-image-width: 10px;
+  border-image-repeat: stretch;
+  opacity: 0.8;
+}
+
+.menu-toggle-btn:active {
+  border-image-source: url('assets/kenney-ui-rpg/buttonLong_brown_pressed.png');
+  transform: translateY(2px);
+}
+
+.menu-toggle-btn.active {
+  color: #4a2f0a;
+  opacity: 1;
+  border-image-source: url('assets/kenney-ui-rpg/buttonLong_beige.png');
+  text-shadow: none;
+}
+
+.menu-toggle-btn.active:active {
+  border-image-source: url('assets/kenney-ui-rpg/buttonLong_beige_pressed.png');
+}
+
+.menu-panel .subject-btn {
+  background: rgba(255, 246, 227, 0.4);
+  border: 2px solid rgba(59, 42, 26, 0.35);
+  color: var(--menu-ink-dim);
+}
+
+.menu-panel .subject-btn:hover {
+  border-color: #6b4520;
+  color: var(--menu-ink);
+}
+
+.menu-panel .subject-btn.active {
+  border-color: #6b4520;
+  background: rgba(255, 246, 227, 0.75);
+  color: #5c3a12;
+}
+
+.menu-resume {
+  border-image-source: url('assets/kenney-ui-rpg/panelInset_beige.png');
+  border-image-slice: 26 fill;
+  border-image-width: 14px;
+  border-image-repeat: stretch;
+  padding: 16px 18px;
+  margin: 0 0 24px;
+  text-align: left;
+}
+
+.menu-resume p {
+  margin: 0 0 12px;
+  color: var(--menu-ink);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.menu-resume-btn {
+  display: block;
+  width: 100%;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  color: #2a1a0a;
+  padding: 12px 14px;
+  border: none;
+  cursor: pointer;
+  border-image-source: url('assets/kenney-ui-rpg/buttonLong_brown.png');
+  border-image-slice: 16 fill;
+  border-image-width: 10px;
+  border-image-repeat: stretch;
+}
+
+.menu-resume-btn:active {
+  border-image-source: url('assets/kenney-ui-rpg/buttonLong_brown_pressed.png');
+  transform: translateY(2px);
+}
+
+.menu-primary-btn {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  margin: 24px auto 0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.85rem;
+  color: #2a1a0a;
+  padding: 18px 20px;
+  border: none;
+  cursor: pointer;
+  border-image-source: url('assets/kenney-ui-rpg/buttonLong_brown.png');
+  border-image-slice: 16 fill;
+  border-image-width: 12px;
+  border-image-repeat: stretch;
+}
+
+.menu-primary-btn:active {
+  border-image-source: url('assets/kenney-ui-rpg/buttonLong_brown_pressed.png');
+  transform: translateY(2px);
+}
+
+.menu-record {
+  margin-top: 26px;
+}
+
+.menu-record-label {
+  color: var(--menu-ink);
+  font-size: 0.8rem;
+  margin: 0 0 8px;
+}
+
+.menu-record-bar-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 280px;
+  height: 18px;
+  margin: 0 auto;
+}
+
+.menu-record-bar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  height: 18px;
+  overflow: hidden;
+}
+
+.menu-record-cap {
+  width: 9px;
+  height: 18px;
+  flex-shrink: 0;
+  background-repeat: no-repeat;
+  background-size: 9px 18px;
+}
+
+.menu-record-mid {
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+  background-repeat: repeat-x;
+  background-size: 18px 18px;
+}
+
+.menu-panel .enemy-preview {
+  flex-wrap: wrap;
+}
+
+.menu-panel .enemy-chip {
+  background: rgba(255, 246, 227, 0.4);
+  border: 1px solid rgba(59, 42, 26, 0.3);
+  border-radius: 8px;
+  padding: 4px 7px;
+}
 
 /* ---------- Battle ---------- */
 
@@ -775,4 +998,5 @@ h1, h2 {
 @media (max-width: 480px) {
   .choices-grid { grid-template-columns: 1fr; }
   .title { font-size: 1.2rem; }
+  .subject-grid { grid-template-columns: 1fr; }
 }

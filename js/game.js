@@ -200,6 +200,25 @@ function retryRun() {
   startBattle();
 }
 
+function resumeRun() {
+  const best = Number(localStorage.getItem('quizquest_best') || 0);
+  const idx = Math.min(best, ENEMIES.length - 1);
+  const nameInput = document.getElementById('hero-name-input');
+  state.heroName = ((nameInput && nameInput.value) || '').trim() || 'Héros';
+  state.timeMode = state.pendingTimeMode || 'normal';
+  state.practiceMode = false;
+  const maxHp = CONFIG.BASE_HERO_HP + idx * CONFIG.LEVEL_UP_HP_BONUS;
+  state.hero = {
+    maxHp,
+    hp: maxHp,
+    atk: CONFIG.BASE_HERO_ATK + idx * CONFIG.LEVEL_UP_ATK_BONUS,
+    streak: 0
+  };
+  state.stats = { correct: 0, wrong: 0 };
+  state.enemyIndex = idx;
+  startBattle();
+}
+
 function backToMenu() {
   clearInterval(state.timerHandle);
   state.screen = 'menu';
@@ -259,6 +278,8 @@ function renderMenu() {
   const timeMode = state.pendingTimeMode || 'normal';
   const gameMode = state.pendingMode || 'campaign';
   const isPractice = gameMode === 'practice';
+  const canResume = !isPractice && best > 0 && best < ENEMIES.length;
+  const recordPct = Math.round((Math.min(best, ENEMIES.length) / ENEMIES.length) * 100);
 
   const subjectPicker = isPractice ? `
     <div class="subject-select">
@@ -273,41 +294,69 @@ function renderMenu() {
       </div>
     </div>` : '';
 
+  const resumeBlock = canResume ? `
+    <div class="menu-resume">
+      <p>💾 Tu es arrivé jusqu'à <strong>${escapeHtml(ENEMIES[best].name)}</strong> (ennemi ${best + 1}/${ENEMIES.length}).</p>
+      <button class="menu-resume-btn" data-action="resume-game">▶ Reprendre l'aventure</button>
+    </div>` : '';
+
+  const startLabel = isPractice ? 'Commencer le défi' : (canResume ? 'Recommencer depuis le début' : "Commencer l'aventure");
+
   return `
   <div class="screen menu-screen">
-    <h1 class="title">⚔️ Quiz Quest</h1>
-    <p class="subtitle">Le RPG où le savoir est ton arme</p>
-
-    <label class="field">
-      Nom du héros
-      <input id="hero-name-input" type="text" maxlength="16" placeholder="Héros" value="${escapeHtml(state.heroName)}">
-    </label>
-
-    <div class="time-mode-select">
-      <p class="field-label">Mode de jeu</p>
-      <div class="btn-row">
-        <button data-action="select-mode" data-mode="campaign" class="mode-btn ${gameMode === 'campaign' ? 'active' : ''}">Aventure complète</button>
-        <button data-action="select-mode" data-mode="practice" class="mode-btn ${isPractice ? 'active' : ''}">Choisir une matière</button>
-      </div>
+    <div class="menu-header">
+      <h1 class="title">Quiz Quest</h1>
+      <p class="subtitle">Le RPG où le savoir est ton arme</p>
     </div>
 
-    ${subjectPicker}
+    <div class="menu-panel">
+      ${resumeBlock}
 
-    <div class="time-mode-select">
-      <p class="field-label">Mode de temps</p>
-      <div class="btn-row">
-        <button data-action="select-time-mode" data-mode="none" class="mode-btn ${timeMode === 'none' ? 'active' : ''}">Sans chrono</button>
-        <button data-action="select-time-mode" data-mode="normal" class="mode-btn ${timeMode === 'normal' ? 'active' : ''}">Normal (${CONFIG.QUESTION_TIME}s)</button>
-        <button data-action="select-time-mode" data-mode="fast" class="mode-btn ${timeMode === 'fast' ? 'active' : ''}">Rapide (${CONFIG.FAST_QUESTION_TIME}s)</button>
+      <label class="field">
+        Nom du héros
+        <input id="hero-name-input" type="text" maxlength="16" placeholder="Héros" value="${escapeHtml(state.heroName)}">
+      </label>
+
+      <div class="time-mode-select">
+        <p class="field-label">Mode de jeu</p>
+        <div class="menu-toggle-row">
+          <button data-action="select-mode" data-mode="campaign" class="menu-toggle-btn ${gameMode === 'campaign' ? 'active' : ''}">Aventure complète</button>
+          <button data-action="select-mode" data-mode="practice" class="menu-toggle-btn ${isPractice ? 'active' : ''}">Choisir une matière</button>
+        </div>
       </div>
-    </div>
 
-    <button class="btn-primary" data-action="start-game">${isPractice ? 'Commencer le défi' : "Commencer l'aventure"}</button>
+      ${subjectPicker}
 
-    <p class="best-record">🏆 Meilleur record : ${best} / ${ENEMIES.length} ennemis vaincus</p>
+      <div class="time-mode-select">
+        <p class="field-label">Mode de temps</p>
+        <div class="menu-toggle-row">
+          <button data-action="select-time-mode" data-mode="none" class="menu-toggle-btn ${timeMode === 'none' ? 'active' : ''}">Sans chrono</button>
+          <button data-action="select-time-mode" data-mode="normal" class="menu-toggle-btn ${timeMode === 'normal' ? 'active' : ''}">Normal (${CONFIG.QUESTION_TIME}s)</button>
+          <button data-action="select-time-mode" data-mode="fast" class="menu-toggle-btn ${timeMode === 'fast' ? 'active' : ''}">Rapide (${CONFIG.FAST_QUESTION_TIME}s)</button>
+        </div>
+      </div>
 
-    <div class="enemy-preview">
-      ${ENEMIES.map(e => `<span class="enemy-chip" title="${e.name} — ${e.difficulty}">${e.emoji}</span>`).join('')}
+      <button class="menu-primary-btn" data-action="start-game">${startLabel}</button>
+
+      <div class="menu-record">
+        <p class="menu-record-label">🏆 Meilleur record : ${Math.min(best, ENEMIES.length)} / ${ENEMIES.length} ennemis vaincus</p>
+        <div class="menu-record-bar-wrap">
+          <div class="menu-record-bar">
+            <div class="menu-record-cap" style="background-image:url('assets/kenney-ui-rpg/barBack_horizontalLeft.png')"></div>
+            <div class="menu-record-mid" style="background-image:url('assets/kenney-ui-rpg/barBack_horizontalMid.png')"></div>
+            <div class="menu-record-cap" style="background-image:url('assets/kenney-ui-rpg/barBack_horizontalRight.png')"></div>
+          </div>
+          <div class="menu-record-bar" style="width:${recordPct}%; overflow:hidden;">
+            <div class="menu-record-cap" style="background-image:url('assets/kenney-ui-rpg/barGreen_horizontalLeft.png')"></div>
+            <div class="menu-record-mid" style="background-image:url('assets/kenney-ui-rpg/barGreen_horizontalMid.png')"></div>
+            <div class="menu-record-cap" style="background-image:url('assets/kenney-ui-rpg/barGreen_horizontalRight.png')"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="enemy-preview">
+        ${ENEMIES.map(e => `<span class="enemy-chip" title="${e.name} — ${e.difficulty}">${e.emoji}</span>`).join('')}
+      </div>
     </div>
   </div>`;
 }
@@ -529,6 +578,9 @@ function handleAction(action, data) {
       newGame(nameInput ? nameInput.value : '', state.pendingTimeMode || 'normal', state.pendingMode || 'campaign', state.pendingEnemyId);
       break;
     }
+    case 'resume-game':
+      resumeRun();
+      break;
     case 'select-time-mode':
       state.pendingTimeMode = data.mode;
       render();
