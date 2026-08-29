@@ -9,6 +9,17 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="access-gate">
+  <div class="access-gate-panel">
+    <h1 class="access-gate-title">⚔️ Quiz Quest</h1>
+    <p class="access-gate-subtitle">Accès anticipé — entre le mot de passe pour jouer</p>
+    <form id="access-gate-form">
+      <input id="access-gate-input" type="password" placeholder="Mot de passe" autocomplete="off" required>
+      <button type="submit" class="btn-primary">Entrer</button>
+    </form>
+    <p id="access-gate-error" class="access-gate-error" hidden>Mot de passe incorrect.</p>
+  </div>
+</div>
 <div id="scene3d-root"></div>
 <button id="mute-toggle" aria-label="Activer/couper le son">🔊</button>
 <div id="app"></div>
@@ -22,5 +33,6 @@
 <script src="js/data/questions.js"></script>
 <script src="js/data/enemies.js"></script>
 <script src="js/game.js"></script>
+<script src="js/gate.js"></script>
 </body>
 </html>
